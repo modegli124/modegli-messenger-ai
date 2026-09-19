@@ -1,0 +1,12 @@
+Enter{
+  "name": "mo-chat",
+  "version": "1.0.0",
+  "description": "Mo Chat Messenger AI Webhook",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
