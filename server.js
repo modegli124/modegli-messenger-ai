@@ -3,24 +3,36 @@ const express = require("express");
 const app = express();
 app.use(express.json());
 
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "modegli_verify_2026";
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 
-// Meta Webhook verification
+// التحقق من Webhook
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
-    res.status(200).send(challenge);
-  } else {
-    res.sendStatus(403);
+    return res.status(200).send(challenge);
   }
+
+  return res.sendStatus(403);
 });
 
-// Receive Messenger events
-app.post("/webhook", (req, res) => {
+// استقبال رسائل Messenger
+app.post("/webhook", async (req, res) => {
   console.log("Messenger event:", JSON.stringify(req.body));
+
+  if (req.body.object === "page") {
+    for (const entry of req.body.entry || []) {
+      for (const event of entry.messaging || []) {
+        if (event.message && event.message.text) {
+          console.log("رسالة:", event.message.text);
+          console.log("من المستخدم:", event.sender.id);
+        }
+      }
+    }
+  }
 
   res.status(200).send("EVENT_RECEIVED");
 });
@@ -28,5 +40,5 @@ app.post("/webhook", (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`MODEGLI Messenger AI running on port ${PORT}`);
+  console.log(`Mo Chat is running on port ${PORT}`);
 });
