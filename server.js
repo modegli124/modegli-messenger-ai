@@ -1,44 +1,71 @@
-const express = require("express");
+const express = require('express');
+const bodyParser = require('body-parser');
+const axios = require('axios');
 
 const app = express();
-app.use(express.json());
+app.use(bodyParser.json());
 
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-// التحقق من Webhook
-app.get("/webhook", (req, res) => {
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
+// 1. مسار التحقق من Webhook (GET)
+app.get('/webhook', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
 
-  if (mode === "subscribe" && token === VERIFY_TOKEN) {
-    return res.status(200).send(challenge);
+  if (mode && token === VERIFY_TOKEN) {
+    console.log("WEBHOOK_VERIFIED");
+    res.status(200).send(challenge);
+  } else {
+    res.sendStatus(403);
   }
-
-  return res.sendStatus(403);
 });
 
-// استقبال رسائل Messenger
-app.post("/webhook", async (req, res) => {
-  console.log("Messenger event:", JSON.stringify(req.body));
+// 2. مسار استقبال الرسائل من فيسبوك (POST)
+app.post('/webhook', async (req, res) => {
+  const body = req.body;
 
-  if (req.body.object === "page") {
-    for (const entry of req.body.entry || []) {
-      for (const event of entry.messaging || []) {
-        if (event.message && event.message.text) {
-          console.log("رسالة:", event.message.text);
-          console.log("من المستخدم:", event.sender.id);
-        }
+  if (body.object === 'page') {
+    // إرسال استجابة فورية لفيسبوك لتأكيد الاستلام
+    res.status(200).send('EVENT_RECEIVED');
+
+    for (const entry of body.entry) {
+      if (!entry.messaging || entry.messaging.length === 0) continue;
+      
+      const webhook_event = entry.messaging[0];
+      const sender_psid = webhook_event.sender.id;
+
+      if (webhook_event.message && webhook_event.message.text) {
+        const userMessage = webhook_event.message.text;
+        console.log(`رسالة جديدة من ${sender_psid}: ${userMessage}`);
+
+        const replyText = `أهلاً بك! وصلتنا رسالتك: "${userMessage}"`;
+        await sendTextMessage(sender_psid, replyText);
       }
     }
+  } else {
+    res.sendStatus(404);
   }
-
-  res.status(200).send("EVENT_RECEIVED");
 });
+
+// دالة إرسال الرد عبر Meta Graph API
+async function sendTextMessage(sender_psid, responseText) {
+  const request_body = {
+    recipient: { id: sender_psid },
+    message: { text: responseText }
+  };
+
+  try {
+    await axios.post(
+      `https://graph.facebook.com/v20.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
+      request_body
+    );
+    console.log('تم إرسال الرد بنجاح عبر Meta Graph API!');
+  } catch (error) {
+    console.error('Graph API Error:', error.response ? error.response.data : error.message);
+  }
+}
 
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Mo Chat is running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
