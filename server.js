@@ -8,7 +8,7 @@ app.use(bodyParser.json());
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-// 1. مسار التحقق من Webhook
+// 1. مسار التحقق من Webhook (GET)
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
@@ -22,7 +22,7 @@ app.get('/webhook', (req, res) => {
   }
 });
 
-// 2. مسار استقبال الرسائل
+// 2. مسار استقبال الرسائل من فيسبوك (POST)
 app.post('/webhook', async (req, res) => {
   const body = req.body;
 
@@ -48,7 +48,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// دالة إرسال الرد عبر Meta Graph API
+// دالة إرسال الرد المحدثة
 async function sendTextMessage(sender_psid, responseText) {
   const request_body = {
     recipient: { id: sender_psid },
@@ -56,16 +56,13 @@ async function sendTextMessage(sender_psid, responseText) {
   };
 
   try {
-    await axios.post(
-      'https://graph.facebook.com/v20.0/me/messages',
-      request_body,
-      {
-        headers: {
-          'Authorization': `Bearer ${PAGE_ACCESS_TOKEN}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    await axios({
+      method: 'POST',
+      url: 'https://graph.facebook.com/v20.0/me/messages',
+      params: { access_token: PAGE_ACCESS_TOKEN },
+      data: request_body,
+      headers: { 'Content-Type': 'application/json' }
+    });
     console.log('تم إرسال الرد بنجاح!');
   } catch (error) {
     console.error('Graph API Error:', error.response ? error.response.data : error.message);
