@@ -7,8 +7,9 @@ app.use(bodyParser.json());
 
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const PAGE_ID = '122104378689477534'; // معرف صفحتك الخاص
 
-// 1. مسار التحقق من Webhook (GET)
+// 1. مسار التحقق من Webhook
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
@@ -22,7 +23,7 @@ app.get('/webhook', (req, res) => {
   }
 });
 
-// 2. مسار استقبال الرسائل من فيسبوك (POST)
+// 2. مسار استقبال الرسائل
 app.post('/webhook', async (req, res) => {
   const body = req.body;
 
@@ -48,7 +49,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// دالة إرسال الرد المحدثة
+// دالة إرسال الرد باستخدام Page ID المباشر
 async function sendTextMessage(sender_psid, responseText) {
   const request_body = {
     recipient: { id: sender_psid },
@@ -56,16 +57,17 @@ async function sendTextMessage(sender_psid, responseText) {
   };
 
   try {
-    await axios({
-      method: 'POST',
-      url: 'https://graph.facebook.com/v20.0/me/messages',
-      params: { access_token: PAGE_ACCESS_TOKEN },
-      data: request_body,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    await axios.post(
+      `https://graph.facebook.com/v20.0/${PAGE_ID}/messages?access_token=${PAGE_ACCESS_TOKEN}`,
+      request_body
+    );
     console.log('تم إرسال الرد بنجاح!');
   } catch (error) {
-    console.error('Graph API Error:', error.response ? error.response.data : error.message);
+    if (error.response) {
+      console.error('Graph API Error Details:', JSON.stringify(error.response.data));
+    } else {
+      console.error('Graph API Error:', error.message);
+    }
   }
 }
 
